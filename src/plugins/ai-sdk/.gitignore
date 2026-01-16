@@ -99,7 +99,8 @@ public/uploads/*
 # Build
 ############################
 
-dist
+# Note: dist is NOT ignored - we commit the pre-built plugin for deployment
+# dist
 build
 
 

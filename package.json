@@ -7,7 +7,6 @@
     "src/plugins/*"
   ],
   "scripts": {
-    "postinstall": "npm run build:plugin",
     "build:plugin": "cd src/plugins/ai-sdk && npm run build",
     "build": "strapi build",
     "console": "strapi console",
