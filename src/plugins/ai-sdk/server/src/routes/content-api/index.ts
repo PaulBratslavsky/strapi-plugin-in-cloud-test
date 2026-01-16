@@ -17,5 +17,13 @@ export default {
         policies: [],
       },
     },
+    {
+      method: 'POST',
+      path: '/chat',
+      handler: 'controller.chat',
+      config: {
+        policies: [],
+      },
+    },
   ],
 };

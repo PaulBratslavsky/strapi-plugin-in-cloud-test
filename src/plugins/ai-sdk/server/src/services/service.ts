@@ -1,5 +1,6 @@
 import type { Core } from '@strapi/strapi';
-import { aiSDKManager } from '../lib/init-ai-sdk';
+import type { ModelMessage } from 'ai';
+import { aiSDKManager, type StreamTextRawResult } from '../lib/init-ai-sdk';
 
 const service = ({ strapi }: { strapi: Core.Strapi }) => ({
   async ask(prompt: string, options?: { system?: string }) {
@@ -14,6 +15,17 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
       system: options?.system,
     });
     return result.textStream;
+  },
+
+  /**
+   * Chat with messages - returns raw stream for UI message stream response
+   * Compatible with AI SDK UI hooks (useChat)
+   */
+  chat(messages: ModelMessage[], options?: { system?: string }): StreamTextRawResult {
+    return aiSDKManager.streamRaw({
+      messages,
+      system: options?.system,
+    });
   },
 
   isInitialized() {

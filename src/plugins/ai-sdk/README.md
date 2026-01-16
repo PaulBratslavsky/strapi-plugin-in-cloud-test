@@ -6,6 +6,7 @@ A Strapi plugin that integrates [Vercel AI SDK](https://ai-sdk.dev/) with [Anthr
 
 - Text generation with Claude models
 - Server-Sent Events (SSE) streaming support
+- AI SDK UI message stream protocol (compatible with `useChat` hook)
 - Configurable via Strapi plugin config
 - Works with Strapi's Users & Permissions
 
@@ -50,7 +51,7 @@ In Strapi admin panel:
 
 1. Go to **Settings → Users & Permissions → Roles**
 2. Select **Public** (or your desired role)
-3. Under **Ai-sdk**, enable `ask` and `askStream`
+3. Under **Ai-sdk**, enable `ask`, `askStream`, and `chat`
 4. Save
 
 ## Configuration
@@ -123,6 +124,32 @@ data: {"text":" Paris."}
 data: [DONE]
 ```
 
+### POST `/api/ai-sdk/chat`
+
+Chat endpoint using AI SDK UI message stream protocol. Compatible with the `useChat` hook from `@ai-sdk/react`.
+
+**Request:**
+
+```json
+{
+  "messages": [
+    { "role": "user", "content": "Hello!" },
+    { "role": "assistant", "content": "Hi there! How can I help you?" },
+    { "role": "user", "content": "Tell me a joke" }
+  ],
+  "system": "You are a helpful assistant."
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `messages` | array | yes | Array of message objects with `role` and `content` |
+| `system` | string | no | System prompt to set context |
+
+**Response:** UI message stream (compatible with AI SDK UI hooks)
+
+The response uses the `x-vercel-ai-ui-message-stream: v1` protocol.
+
 ## Usage Examples
 
 ### JavaScript/TypeScript
@@ -188,7 +215,7 @@ curl -N -X POST http://localhost:1337/api/ai-sdk/ask-stream \
   -d '{"prompt": "Count from 1 to 10"}'
 ```
 
-### React Example
+### React Example (Manual Streaming)
 
 ```tsx
 import { useState } from 'react';
@@ -237,6 +264,50 @@ function ChatComponent() {
     </div>
   );
 }
+```
+
+### React Example (with useChat hook)
+
+Using the `useChat` hook from `@ai-sdk/react` with the `/chat` endpoint:
+
+```tsx
+import { useChat } from '@ai-sdk/react';
+
+function ChatWithHook() {
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    api: 'http://localhost:1337/api/ai-sdk/chat',
+  });
+
+  return (
+    <div>
+      <div>
+        {messages.map((message) => (
+          <div key={message.id}>
+            <strong>{message.role}:</strong> {message.content}
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        <input
+          value={input}
+          onChange={handleInputChange}
+          placeholder="Type a message..."
+          disabled={isLoading}
+        />
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? 'Sending...' : 'Send'}
+        </button>
+      </form>
+    </div>
+  );
+}
+```
+
+Install the AI SDK React package:
+
+```bash
+npm install @ai-sdk/react
 ```
 
 ## Programmatic Usage

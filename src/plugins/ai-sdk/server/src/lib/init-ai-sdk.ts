@@ -1,5 +1,20 @@
 import { createAnthropic, type AnthropicProvider } from '@ai-sdk/anthropic';
 import { generateText, streamText, type LanguageModel } from 'ai';
+
+/**
+ * Minimal interface for the streamText result with methods we need.
+ * We define this to avoid TypeScript declaration issues with AI SDK's internal types.
+ */
+export interface StreamTextRawResult {
+  readonly textStream: AsyncIterable<string>;
+  toUIMessageStreamResponse(options?: {
+    status?: number;
+    statusText?: string;
+    headers?: Record<string, string>;
+    getErrorMessage?: (error: unknown) => string;
+    sendUsage?: boolean;
+  }): Response;
+}
 import {
   CHAT_MODELS,
   DEFAULT_MODEL,
@@ -59,6 +74,14 @@ class AISDKManager {
   async stream(input: GenerateInput): Promise<StreamTextResult> {
     const result = streamText(this.buildParams(input));
     return { textStream: result.textStream };
+  }
+
+  /**
+   * Returns the raw streamText result for use with toUIMessageStreamResponse()
+   * Compatible with AI SDK UI hooks (useChat, useCompletion)
+   */
+  streamRaw(input: GenerateInput): StreamTextRawResult {
+    return streamText(this.buildParams(input)) as StreamTextRawResult;
   }
 
   // Convenience methods for simple prompt-based calls
