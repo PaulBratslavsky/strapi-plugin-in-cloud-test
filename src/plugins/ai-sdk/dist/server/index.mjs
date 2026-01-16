@@ -1,6 +1,6 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { generateText, streamText } from "ai";
-import { PassThrough } from "node:stream";
+import { PassThrough, Readable } from "node:stream";
 const bootstrap = ({ strapi }) => {
 };
 const destroy = ({ strapi }) => {
@@ -196,7 +196,7 @@ const controller = ({ strapi }) => ({
     ctx.set("Connection", "keep-alive");
     ctx.set("X-Accel-Buffering", "no");
     ctx.set("x-vercel-ai-ui-message-stream", "v1");
-    ctx.body = response.body;
+    ctx.body = Readable.fromWeb(response.body);
   }
 });
 const controllers = {

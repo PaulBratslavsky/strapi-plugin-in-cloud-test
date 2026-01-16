@@ -9,7 +9,7 @@ async function testChat() {
   console.log('Testing chat endpoint with UI message stream...\n');
 
   const messages = [
-    { role: 'user', content: 'Hello! Can you tell me a short joke?' }
+    { role: 'user', content: 'Tell me a short story about a robot (2-3 paragraphs).' }
   ];
 
   console.log('Messages:', JSON.stringify(messages, null, 2));
@@ -54,39 +54,23 @@ async function testChat() {
     for (const line of lines) {
       if (!line.trim()) continue;
 
-      // UI message stream uses format: type:data
-      const colonIndex = line.indexOf(':');
-      if (colonIndex === -1) continue;
+      // SSE format: "data: {...}" or "data: [DONE]"
+      if (!line.startsWith('data: ')) continue;
 
-      const type = line.substring(0, colonIndex);
-      const data = line.substring(colonIndex + 1);
+      const data = line.substring(6); // Remove "data: " prefix
 
-      // Handle different message types
-      switch (type) {
-        case 'g': // text delta
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.text) {
-              process.stdout.write(parsed.text);
-              fullText += parsed.text;
-            }
-          } catch {
-            // Raw text
-            process.stdout.write(data);
-            fullText += data;
-          }
-          break;
-        case 'e': // error
-          console.error('\nError:', data);
-          break;
-        case 'd': // done
-          // Stream finished
-          break;
-        default:
-          // Other message types (a, b, c, f, etc.)
-          // You can log these for debugging:
-          // console.log(`[${type}]: ${data}`);
-          break;
+      if (data === '[DONE]') continue;
+
+      try {
+        const parsed = JSON.parse(data);
+
+        // Handle text-delta messages
+        if (parsed.type === 'text-delta' && parsed.delta) {
+          process.stdout.write(parsed.delta);
+          fullText += parsed.delta;
+        }
+      } catch {
+        // Ignore parse errors
       }
     }
   }
@@ -140,21 +124,18 @@ async function testChatConversation() {
     for (const line of lines) {
       if (!line.trim()) continue;
 
-      const colonIndex = line.indexOf(':');
-      if (colonIndex === -1) continue;
+      if (!line.startsWith('data: ')) continue;
 
-      const type = line.substring(0, colonIndex);
-      const data = line.substring(colonIndex + 1);
+      const data = line.substring(6);
+      if (data === '[DONE]') continue;
 
-      if (type === 'g') {
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.text) {
-            process.stdout.write(parsed.text);
-          }
-        } catch {
-          process.stdout.write(data);
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.type === 'text-delta' && parsed.delta) {
+          process.stdout.write(parsed.delta);
         }
+      } catch {
+        // Ignore parse errors
       }
     }
   }

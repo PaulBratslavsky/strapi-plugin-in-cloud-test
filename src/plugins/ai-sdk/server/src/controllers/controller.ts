@@ -1,5 +1,6 @@
 import type { Core } from '@strapi/strapi';
 import type { Context } from 'koa';
+import { Readable } from 'node:stream';
 import { getService, validateBody, validateChatBody, createSSEStream, writeSSE } from '../lib/utils';
 
 const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
@@ -55,7 +56,7 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
     // Get the response using toUIMessageStreamResponse
     const response = result.toUIMessageStreamResponse();
 
-    // Set headers from the AI SDK response
+    // Set headers for streaming
     ctx.status = 200;
     ctx.set('Content-Type', 'text/event-stream; charset=utf-8');
     ctx.set('Cache-Control', 'no-cache, no-transform');
@@ -63,8 +64,8 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
     ctx.set('X-Accel-Buffering', 'no');
     ctx.set('x-vercel-ai-ui-message-stream', 'v1');
 
-    // Stream the response body
-    ctx.body = response.body;
+    // Convert Web ReadableStream to Node.js Readable stream for Koa
+    ctx.body = Readable.fromWeb(response.body as import('stream/web').ReadableStream);
   },
 });
 
