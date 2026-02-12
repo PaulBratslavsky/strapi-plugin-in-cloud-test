@@ -40,6 +40,12 @@ export declare function createTools(strapi: Core.Strapi): {
         document: import("@strapi/types/dist/modules/documents").AnyDocument;
         error?: undefined;
     }>;
+    triggerAnimation: import("ai").Tool<{
+        animation: "idle" | "speak" | "wave" | "nod" | "think" | "celebrate" | "shake" | "spin";
+    }, {
+        triggered: "idle" | "speak" | "wave" | "nod" | "think" | "celebrate" | "shake" | "spin";
+        status: string;
+    }>;
 };
 /**
  * Build a system prompt section describing all available tools.

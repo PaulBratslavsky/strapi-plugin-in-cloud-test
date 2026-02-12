@@ -10,7 +10,12 @@ export interface Message {
     content: string;
     toolCalls?: ToolCall[];
 }
-export declare function useChat(): {
+export interface UseChatOptions {
+    onAnimationTrigger?: (animation: string) => void;
+    onStreamStart?: () => void;
+    onStreamEnd?: () => void;
+}
+export declare function useChat(options?: UseChatOptions): {
     messages: Message[];
     sendMessage: (text: string) => Promise<void>;
     clearMessages: () => void;

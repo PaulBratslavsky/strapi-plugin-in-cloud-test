@@ -1,6 +1,7 @@
 import { Main } from '@strapi/design-system';
 import { Layouts } from '@strapi/strapi/admin';
 import { Chat } from '../components/Chat';
+import { AvatarAnimationProvider } from '../context/AvatarAnimationContext';
 
 const HomePage = () => {
   return (
@@ -10,7 +11,9 @@ const HomePage = () => {
         subtitle="Chat with AI powered by Vercel AI SDK"
       />
       <Layouts.Content>
-        <Chat />
+        <AvatarAnimationProvider>
+          <Chat />
+        </AvatarAnimationProvider>
       </Layouts.Content>
     </Main>
   );

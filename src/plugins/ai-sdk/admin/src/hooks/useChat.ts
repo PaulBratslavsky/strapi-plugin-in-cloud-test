@@ -53,7 +53,13 @@ function removeMessage(setMessages: SetMessages, id: string) {
   setMessages((prev) => prev.filter((message) => message.id !== id));
 }
 
-export function useChat() {
+export interface UseChatOptions {
+  onAnimationTrigger?: (animation: string) => void;
+  onStreamStart?: () => void;
+  onStreamEnd?: () => void;
+}
+
+export function useChat(options?: UseChatOptions) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,11 +79,20 @@ export function useChat() {
       try {
         const reader = await fetchChatStream([...messages, userMessage]);
 
+        let streamStarted = false;
         const result = await readSSEStream(reader, {
           onTextDelta: (content) => {
+            if (!streamStarted) {
+              streamStarted = true;
+              options?.onStreamStart?.();
+            }
             updateMessage(setMessages, assistantId, (message) => ({ ...message, content }));
           },
           onToolInput: (toolCallId, toolName, input) => {
+            // Fire animation trigger instantly on tool-input
+            if (toolName === 'triggerAnimation' && input && typeof input === 'object' && 'animation' in input) {
+              options?.onAnimationTrigger?.(String((input as { animation: string }).animation));
+            }
             updateMessage(setMessages, assistantId, (message) => ({
               ...message,
               toolCalls: [
@@ -104,6 +119,7 @@ export function useChat() {
         removeMessage(setMessages, assistantId);
       } finally {
         setIsLoading(false);
+        options?.onStreamEnd?.();
       }
     },
     [isLoading, messages]

@@ -4,22 +4,35 @@ import { Sparkle } from '@strapi/icons';
 import styled from 'styled-components';
 import Markdown from 'react-markdown';
 import { useChat, type ToolCall } from '../hooks/useChat';
+import { useAvatarAnimation } from '../context/AvatarAnimationContext';
+import { AvatarPanel } from './AvatarPanel';
 import waifuAvatar from './waifu-avatar.png';
 
 // --- Styled Components ---
 
-const ChatWrapper = styled(Box)`
+const ChatLayout = styled.div`
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   height: calc(100vh - 200px);
   min-height: 400px;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(33, 33, 52, 0.1);
+  background: #ffffff;
+`;
+
+const ChatWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
 `;
 
 const MessagesArea = styled.div`
   flex: 1;
   overflow-y: auto;
   scroll-behavior: smooth;
-  padding: 16px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -173,6 +186,8 @@ const ToolCallContent = styled.pre`
 
 // --- Tool Call Component ---
 
+const HIDDEN_TOOLS = new Set(['triggerAnimation']);
+
 function ToolCallDisplay({ toolCall }: { toolCall: ToolCall }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -203,7 +218,12 @@ function ToolCallDisplay({ toolCall }: { toolCall: ToolCall }) {
 export function Chat() {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { messages, sendMessage, isLoading, error } = useChat();
+  const { trigger, clearAnimation } = useAvatarAnimation();
+  const { messages, sendMessage, isLoading, error } = useChat({
+    onAnimationTrigger: trigger,
+    onStreamStart: () => trigger('speak'),
+    onStreamEnd: () => clearAnimation(),
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -216,85 +236,90 @@ export function Chat() {
   };
 
   return (
-    <ChatWrapper background="neutral0" hasRadius shadow="tableShadow">
-      <MessagesArea>
-        {messages.length === 0 && (
-          <EmptyState>
-            <Typography variant="beta" textColor="neutral400">
-              AI Chat
-            </Typography>
-            <Box paddingTop={2}>
-              <Typography variant="omega" textColor="neutral500">
-                Send a message to start the conversation
+    <ChatLayout>
+      <AvatarPanel />
+      <ChatWrapper>
+        <MessagesArea>
+          {messages.length === 0 && (
+            <EmptyState>
+              <Typography variant="beta" textColor="neutral400">
+                AI Chat
               </Typography>
-            </Box>
-          </EmptyState>
+              <Box paddingTop={2}>
+                <Typography variant="omega" textColor="neutral500">
+                  Send a message to start the conversation
+                </Typography>
+              </Box>
+            </EmptyState>
+          )}
+
+          {messages.map((message) => (
+            <MessageRow key={message.id} $isUser={message.role === 'user'}>
+              {message.role === 'assistant' && (
+                <Avatar src={waifuAvatar} alt="Assistant" />
+              )}
+              <MessageBubble $isUser={message.role === 'user'}>
+                <MessageRole $isUser={message.role === 'user'}>
+                  {message.role === 'user' ? 'You' : 'Assistant'}
+                </MessageRole>
+                {message.role === 'assistant' ? (
+                  message.content ? (
+                    <MarkdownBody $isUser={false}>
+                      <Markdown>{message.content}</Markdown>
+                    </MarkdownBody>
+                  ) : isLoading ? (
+                    <TypingDots><span /><span /><span /></TypingDots>
+                  ) : null
+                ) : (
+                  message.content
+                )}
+                {message.toolCalls
+                  ?.filter((tc) => !HIDDEN_TOOLS.has(tc.toolName))
+                  .map((tc) => (
+                    <ToolCallDisplay key={tc.toolCallId} toolCall={tc} />
+                  ))}
+              </MessageBubble>
+            </MessageRow>
+          ))}
+
+          <div ref={messagesEndRef} />
+        </MessagesArea>
+
+        {error && (
+          <Box padding={3} background="danger100" marginLeft={4} marginRight={4}>
+            <Typography textColor="danger600">Error: {error}</Typography>
+          </Box>
         )}
 
-        {messages.map((message) => (
-          <MessageRow key={message.id} $isUser={message.role === 'user'}>
-            {message.role === 'assistant' && (
-              <Avatar src={waifuAvatar} alt="Assistant" />
-            )}
-            <MessageBubble $isUser={message.role === 'user'}>
-              <MessageRole $isUser={message.role === 'user'}>
-                {message.role === 'user' ? 'You' : 'Assistant'}
-              </MessageRole>
-              {message.role === 'assistant' ? (
-                message.content ? (
-                  <MarkdownBody $isUser={false}>
-                    <Markdown>{message.content}</Markdown>
-                  </MarkdownBody>
-                ) : isLoading ? (
-                  <TypingDots><span /><span /><span /></TypingDots>
-                ) : null
-              ) : (
-                message.content
-              )}
-              {message.toolCalls?.map((tc) => (
-                <ToolCallDisplay key={tc.toolCallId} toolCall={tc} />
-              ))}
-            </MessageBubble>
-          </MessageRow>
-        ))}
-
-        <div ref={messagesEndRef} />
-      </MessagesArea>
-
-      {error && (
-        <Box padding={3} background="danger100" marginLeft={4} marginRight={4}>
-          <Typography textColor="danger600">Error: {error}</Typography>
-        </Box>
-      )}
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSend();
-        }}
-      >
-        <InputArea>
-          <Box flex="1">
-            <TextInput
-              placeholder="Type your message..."
-              aria-label="Chat message"
-              value={input}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setInput(e.target.value)
-              }
-            />
-          </Box>
-          <Button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            loading={isLoading}
-            size="L"
-            startIcon={<Sparkle />}
-          >
-            Send
-          </Button>
-        </InputArea>
-      </form>
-    </ChatWrapper>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSend();
+          }}
+        >
+          <InputArea>
+            <Box flex="1">
+              <TextInput
+                placeholder="Type your message..."
+                aria-label="Chat message"
+                value={input}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setInput(e.target.value)
+                }
+              />
+            </Box>
+            <Button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              loading={isLoading}
+              size="L"
+              startIcon={<Sparkle />}
+            >
+              Send
+            </Button>
+          </InputArea>
+        </form>
+      </ChatWrapper>
+    </ChatLayout>
   );
 }

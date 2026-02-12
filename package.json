@@ -23,6 +23,8 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.15",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
     "@strapi/plugin-cloud": "5.33.3",
     "@strapi/plugin-users-permissions": "5.33.3",
     "@strapi/strapi": "5.33.3",
@@ -32,6 +34,7 @@
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
     "styled-components": "^6.0.0",
+    "three": "^0.182.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {

@@ -2,12 +2,14 @@ import type { Core } from '@strapi/strapi';
 import { createListContentTypesTool } from './list-content-types';
 import { createSearchContentTool } from './search-content';
 import { createWriteContentTool } from './write-content';
+import { createTriggerAnimationTool } from './trigger-animation';
 
 export function createTools(strapi: Core.Strapi) {
   return {
     listContentTypes: createListContentTypesTool(strapi),
     searchContent: createSearchContentTool(strapi),
     writeContent: createWriteContentTool(strapi),
+    triggerAnimation: createTriggerAnimationTool(),
   };
 }
 

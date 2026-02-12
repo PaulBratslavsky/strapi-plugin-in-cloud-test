@@ -34,7 +34,7 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
       messages: modelMessages,
       system,
       tools,
-      stopWhen: stepCountIs(5),
+      stopWhen: stepCountIs(6),
     });
   },
 
