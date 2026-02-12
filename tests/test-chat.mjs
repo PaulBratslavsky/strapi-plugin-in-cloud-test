@@ -9,7 +9,11 @@ async function testChat() {
   console.log('Testing chat endpoint with UI message stream...\n');
 
   const messages = [
-    { role: 'user', content: 'Tell me a short story about a robot (2-3 paragraphs).' }
+    {
+      id: 'msg-1',
+      role: 'user',
+      parts: [{ type: 'text', text: 'Tell me a short story about a robot (2-3 paragraphs).' }]
+    }
   ];
 
   console.log('Messages:', JSON.stringify(messages, null, 2));
@@ -89,9 +93,21 @@ async function testChatConversation() {
   console.log('\n=== Testing with conversation history ===\n');
 
   const messages = [
-    { role: 'user', content: 'My name is Alice.' },
-    { role: 'assistant', content: 'Nice to meet you, Alice! How can I help you today?' },
-    { role: 'user', content: 'What is my name?' }
+    {
+      id: 'msg-1',
+      role: 'user',
+      parts: [{ type: 'text', text: 'My name is Alice.' }]
+    },
+    {
+      id: 'msg-2',
+      role: 'assistant',
+      parts: [{ type: 'text', text: 'Nice to meet you, Alice! How can I help you today?' }]
+    },
+    {
+      id: 'msg-3',
+      role: 'user',
+      parts: [{ type: 'text', text: 'What is my name?' }]
+    }
   ];
 
   console.log('Messages:', JSON.stringify(messages, null, 2));

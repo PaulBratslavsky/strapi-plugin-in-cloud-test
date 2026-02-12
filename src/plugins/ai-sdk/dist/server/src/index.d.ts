@@ -14,6 +14,7 @@ declare const _default: {
             anthropicApiKey: string;
             chatModel: string;
             baseURL: any;
+            systemPrompt: string;
         };
         validator(config: unknown): void;
     };
@@ -41,9 +42,16 @@ declare const _default: {
         /**
          * Plugin server methods
          */
-        admin: () => {
+        admin: {
             type: string;
-            routes: any[];
+            routes: {
+                method: string;
+                path: string;
+                handler: string;
+                config: {
+                    policies: any[];
+                };
+            }[];
         };
     };
     services: {
@@ -56,9 +64,9 @@ declare const _default: {
             askStream(prompt: string, options?: {
                 system?: string;
             }): Promise<AsyncIterable<string>>;
-            chat(messages: import("ai").ModelMessage[], options?: {
+            chat(messages: import("ai").UIMessage<unknown, import("ai").UIDataTypes, import("ai").UITools>[], options?: {
                 system?: string;
-            }): import("./lib/init-ai-sdk").StreamTextRawResult;
+            }): Promise<import("./lib/init-ai-sdk").StreamTextRawResult>;
             isInitialized(): boolean;
         };
     };

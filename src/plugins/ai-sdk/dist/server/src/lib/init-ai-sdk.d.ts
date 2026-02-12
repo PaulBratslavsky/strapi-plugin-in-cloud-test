@@ -13,11 +13,15 @@ export interface StreamTextRawResult {
         sendUsage?: boolean;
     }): Response;
 }
-import { type PluginConfig, type ChatModelName, type GenerateInput, type GenerateTextResult, type StreamTextResult } from './types';
+import { type ChatModelName, type GenerateInput, type GenerateTextResult, type StreamTextResult } from './types';
 declare class AISDKManager {
     private provider;
     private model;
-    initialize(config: PluginConfig): void;
+    /**
+     * Initialize the manager with plugin configuration
+     * Returns false if config is missing required fields
+     */
+    initialize(config: unknown): boolean;
     private getLanguageModel;
     private buildParams;
     generate(input: GenerateInput): Promise<GenerateTextResult>;

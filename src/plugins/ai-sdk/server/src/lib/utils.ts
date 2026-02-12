@@ -1,6 +1,6 @@
 import type { Core } from '@strapi/strapi';
 import type { Context } from 'koa';
-import type { ModelMessage } from 'ai';
+import type { UIMessage } from 'ai';
 import { PassThrough } from 'node:stream';
 
 /**
@@ -34,8 +34,8 @@ export function validateBody(ctx: Context): { prompt: string; system?: string } 
 /**
  * Validate request body for message-based chat requests
  */
-export function validateChatBody(ctx: Context): { messages: ModelMessage[]; system?: string } | null {
-  const { messages, system } = ctx.request.body as { messages?: ModelMessage[]; system?: string };
+export function validateChatBody(ctx: Context): { messages: UIMessage[]; system?: string } | null {
+  const { messages, system } = ctx.request.body as { messages?: UIMessage[]; system?: string };
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     ctx.badRequest('messages is required and must be a non-empty array');

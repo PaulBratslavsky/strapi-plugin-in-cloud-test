@@ -5,6 +5,7 @@ import { generateText, streamText, type LanguageModel } from 'ai';
  * Minimal interface for the streamText result with methods we need.
  * We define this to avoid TypeScript declaration issues with AI SDK's internal types.
  */
+
 export interface StreamTextRawResult {
   readonly textStream: AsyncIterable<string>;
   toUIMessageStreamResponse(options?: {
@@ -31,19 +32,27 @@ class AISDKManager {
   private provider: AnthropicProvider | null = null;
   private model: ChatModelName = DEFAULT_MODEL;
 
-  initialize(config: PluginConfig): void {
-    if (!config.anthropicApiKey) {
-      throw new Error('anthropicApiKey is required in plugin config');
+  /**
+   * Initialize the manager with plugin configuration
+   * Returns false if config is missing required fields
+   */
+  initialize(config: unknown): boolean {
+    const cfg = config as Partial<PluginConfig> | undefined;
+
+    if (!cfg?.anthropicApiKey) {
+      return false;
     }
 
     this.provider = createAnthropic({
-      apiKey: config.anthropicApiKey,
-      baseURL: config.baseURL,
+      apiKey: cfg.anthropicApiKey,
+      baseURL: cfg.baseURL,
     });
 
-    if (config.chatModel && CHAT_MODELS.includes(config.chatModel)) {
-      this.model = config.chatModel;
+    if (cfg.chatModel && CHAT_MODELS.includes(cfg.chatModel)) {
+      this.model = cfg.chatModel;
     }
+
+    return true;
   }
 
   private getLanguageModel(): LanguageModel {
@@ -59,6 +68,8 @@ class AISDKManager {
       system: input.system,
       temperature: input.temperature ?? DEFAULT_TEMPERATURE,
       maxOutputTokens: input.maxOutputTokens,
+      tools: input.tools,
+      stopWhen: input.stopWhen,
     };
 
     return isPromptInput(input)

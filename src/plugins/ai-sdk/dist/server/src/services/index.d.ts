@@ -8,9 +8,9 @@ declare const _default: {
         askStream(prompt: string, options?: {
             system?: string;
         }): Promise<AsyncIterable<string>>;
-        chat(messages: import("ai").ModelMessage[], options?: {
+        chat(messages: import("ai").UIMessage<unknown, import("ai").UIDataTypes, import("ai").UITools>[], options?: {
             system?: string;
-        }): import("../lib/init-ai-sdk").StreamTextRawResult;
+        }): Promise<import("../lib/init-ai-sdk").StreamTextRawResult>;
         isInitialized(): boolean;
     };
 };

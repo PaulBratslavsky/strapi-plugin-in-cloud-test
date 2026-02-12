@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import type { Core } from '@strapi/strapi';
 import type { Context } from 'koa';
-import type { ModelMessage } from 'ai';
+import type { UIMessage } from 'ai';
 import { PassThrough } from 'node:stream';
 /**
  * Get the AI SDK service with initialization check
@@ -18,7 +18,7 @@ export declare function validateBody(ctx: Context): {
  * Validate request body for message-based chat requests
  */
 export declare function validateChatBody(ctx: Context): {
-    messages: ModelMessage[];
+    messages: UIMessage[];
     system?: string;
 } | null;
 /**

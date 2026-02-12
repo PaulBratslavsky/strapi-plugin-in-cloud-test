@@ -1,6 +1,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { generateText, streamText } from "ai";
+import { generateText, streamText, tool, zodSchema, convertToModelMessages, stepCountIs } from "ai";
 import { PassThrough, Readable } from "node:stream";
+import { z } from "zod";
 const bootstrap = ({ strapi }) => {
 };
 const destroy = ({ strapi }) => {
@@ -22,17 +23,23 @@ class AISDKManager {
     this.provider = null;
     this.model = DEFAULT_MODEL;
   }
+  /**
+   * Initialize the manager with plugin configuration
+   * Returns false if config is missing required fields
+   */
   initialize(config2) {
-    if (!config2.anthropicApiKey) {
-      throw new Error("anthropicApiKey is required in plugin config");
+    const cfg = config2;
+    if (!cfg?.anthropicApiKey) {
+      return false;
     }
     this.provider = createAnthropic({
-      apiKey: config2.anthropicApiKey,
-      baseURL: config2.baseURL
+      apiKey: cfg.anthropicApiKey,
+      baseURL: cfg.baseURL
     });
-    if (config2.chatModel && CHAT_MODELS.includes(config2.chatModel)) {
-      this.model = config2.chatModel;
+    if (cfg.chatModel && CHAT_MODELS.includes(cfg.chatModel)) {
+      this.model = cfg.chatModel;
     }
+    return true;
   }
   getLanguageModel() {
     if (!this.provider) {
@@ -45,7 +52,9 @@ class AISDKManager {
       model: this.getLanguageModel(),
       system: input.system,
       temperature: input.temperature ?? DEFAULT_TEMPERATURE,
-      maxOutputTokens: input.maxOutputTokens
+      maxOutputTokens: input.maxOutputTokens,
+      tools: input.tools,
+      stopWhen: input.stopWhen
     };
     return isPromptInput(input) ? { ...base, prompt: input.prompt } : { ...base, messages: input.messages };
   }
@@ -84,22 +93,19 @@ class AISDKManager {
 const aiSDKManager = new AISDKManager();
 const register = ({ strapi }) => {
   const config2 = strapi.config.get("plugin::ai-sdk");
-  if (!config2?.anthropicApiKey) {
+  const initialized = aiSDKManager.initialize(config2);
+  if (!initialized) {
     strapi.log.warn("AI SDK plugin: anthropicApiKey not configured, plugin will not be initialized");
     return;
   }
-  aiSDKManager.initialize({
-    anthropicApiKey: config2.anthropicApiKey,
-    chatModel: config2.chatModel,
-    baseURL: config2.baseURL
-  });
   strapi.log.info(`AI SDK plugin initialized with model: ${aiSDKManager.getChatModel()}`);
 };
 const config = {
   default: {
     anthropicApiKey: "",
     chatModel: "claude-sonnet-4-20250514",
-    baseURL: void 0
+    baseURL: void 0,
+    systemPrompt: ""
   },
   validator(config2) {
     if (typeof config2 !== "object" || config2 === null) {
@@ -188,7 +194,9 @@ const controller = ({ strapi }) => ({
     if (!body) return;
     const service2 = getService(strapi, ctx);
     if (!service2) return;
-    const result = service2.chat(body.messages, { system: body.system });
+    const config2 = strapi.config.get("plugin::ai-sdk");
+    const system = body.system || config2.systemPrompt || void 0;
+    const result = await service2.chat(body.messages, { system });
     const response = result.toUIMessageStreamResponse();
     ctx.status = 200;
     ctx.set("Content-Type", "text/event-stream; charset=utf-8");
@@ -233,14 +241,206 @@ const contentAPIRoutes = {
     }
   ]
 };
-const adminAPIRoutes = () => ({
+const adminAPIRoutes = {
   type: "admin",
-  routes: []
-});
+  routes: [
+    {
+      method: "POST",
+      path: "/chat",
+      handler: "controller.chat",
+      config: {
+        policies: []
+      }
+    }
+  ]
+};
 const routes = {
   "content-api": contentAPIRoutes,
   admin: adminAPIRoutes
 };
+const INTERNAL_FIELDS = [
+  "createdAt",
+  "updatedAt",
+  "publishedAt",
+  "createdBy",
+  "updatedBy",
+  "locale",
+  "localizations"
+];
+function createListContentTypesTool(strapi) {
+  return tool({
+    description: "List all Strapi content types and components with their fields, relations, and structure.",
+    inputSchema: zodSchema(z.object({})),
+    execute: async () => {
+      const contentTypes2 = strapi.contentTypes;
+      const components = strapi.components;
+      const apiContentTypes = [];
+      for (const [uid, contentType] of Object.entries(contentTypes2)) {
+        if (uid.startsWith("admin::") || uid.startsWith("strapi::")) continue;
+        const ct = contentType;
+        const kind = ct.kind || "collectionType";
+        const fields = [];
+        const relations = [];
+        const usedComponents = [];
+        for (const [attrName, attrDef] of Object.entries(ct.attributes || {})) {
+          if (INTERNAL_FIELDS.includes(attrName)) continue;
+          const attr = attrDef;
+          fields.push(attrName);
+          if (attr.type === "relation" && attr.target) {
+            const targetCt = contentTypes2[attr.target];
+            relations.push({
+              field: attrName,
+              type: attr.relation,
+              target: attr.target,
+              targetDisplayName: targetCt?.info?.displayName || attr.target
+            });
+          }
+          if (attr.type === "component" && attr.component) {
+            if (!usedComponents.includes(attr.component)) {
+              usedComponents.push(attr.component);
+            }
+          }
+          if (attr.type === "dynamiczone") {
+            for (const comp of attr.components || []) {
+              if (!usedComponents.includes(comp)) {
+                usedComponents.push(comp);
+              }
+            }
+          }
+        }
+        apiContentTypes.push({
+          uid,
+          kind,
+          displayName: ct.info?.displayName || uid,
+          fields,
+          relations,
+          components: usedComponents
+        });
+      }
+      apiContentTypes.sort((a, b) => a.displayName.localeCompare(b.displayName));
+      const componentSummaries = [];
+      for (const [uid, component] of Object.entries(components)) {
+        const comp = component;
+        componentSummaries.push({
+          uid,
+          category: comp.category || "default",
+          displayName: comp.info?.displayName || uid,
+          fieldCount: Object.keys(comp.attributes || {}).length
+        });
+      }
+      componentSummaries.sort((a, b) => {
+        const cat = a.category.localeCompare(b.category);
+        return cat !== 0 ? cat : a.displayName.localeCompare(b.displayName);
+      });
+      return {
+        contentTypes: apiContentTypes,
+        components: componentSummaries
+      };
+    }
+  });
+}
+const MAX_PAGE_SIZE = 50;
+function createSearchContentTool(strapi) {
+  return tool({
+    description: "Search and query any Strapi content type. Use listContentTypes first to discover available content types and their fields, then use this tool to query specific collections.",
+    inputSchema: zodSchema(
+      z.object({
+        contentType: z.string().describe(
+          'The content type UID to search, e.g. "api::article.article" or "plugin::users-permissions.user"'
+        ),
+        query: z.string().optional().describe("Full-text search query string (searches across all searchable text fields)"),
+        filters: z.record(z.string(), z.unknown()).optional().describe(
+          'Strapi filter object, e.g. { username: { $containsi: "john" } }'
+        ),
+        fields: z.array(z.string()).optional().describe("Specific fields to return. If omitted, returns all fields."),
+        sort: z.string().optional().describe('Sort order, e.g. "createdAt:desc"'),
+        page: z.number().optional().default(1).describe("Page number (starts at 1)"),
+        pageSize: z.number().optional().default(10).describe("Results per page (max 50)")
+      })
+    ),
+    execute: async ({ contentType, query, filters, fields, sort, page, pageSize }) => {
+      if (!strapi.contentTypes[contentType]) {
+        return { error: `Content type "${contentType}" does not exist.` };
+      }
+      const clampedPageSize = Math.min(pageSize ?? 10, MAX_PAGE_SIZE);
+      const results = await strapi.documents(contentType).findMany({
+        ...query ? { _q: query } : {},
+        ...filters ? { filters } : {},
+        ...fields ? { fields } : {},
+        ...sort ? { sort } : {},
+        page,
+        pageSize: clampedPageSize,
+        populate: "*"
+      });
+      const total = await strapi.documents(contentType).count({
+        ...query ? { _q: query } : {},
+        ...filters ? { filters } : {}
+      });
+      return {
+        results,
+        pagination: {
+          page: page ?? 1,
+          pageSize: clampedPageSize,
+          total
+        }
+      };
+    }
+  });
+}
+function createWriteContentTool(strapi) {
+  return tool({
+    description: "Create or update a document in any Strapi content type. Use listContentTypes first to discover the schema, and searchContent to find existing documents for updates.",
+    inputSchema: zodSchema(
+      z.object({
+        contentType: z.string().describe('Content type UID, e.g. "api::article.article"'),
+        action: z.enum(["create", "update"]).describe("Whether to create a new document or update an existing one"),
+        documentId: z.string().optional().describe("Required for update — the document ID to update"),
+        data: z.record(z.string(), z.unknown()).describe("The field values to set. Must match the content type schema."),
+        status: z.enum(["draft", "published"]).optional().describe("Document status. Defaults to draft.")
+      })
+    ),
+    execute: async ({ contentType, action, documentId, data, status }) => {
+      if (!strapi.contentTypes[contentType]) {
+        return { error: `Content type "${contentType}" does not exist.` };
+      }
+      if (action === "update" && !documentId) {
+        return { error: "documentId is required for update actions." };
+      }
+      const docs = strapi.documents(contentType);
+      if (action === "create") {
+        const document2 = await docs.create({
+          data,
+          ...status ? { status } : {},
+          populate: "*"
+        });
+        return { action: "create", document: document2 };
+      }
+      const document = await docs.update({
+        documentId,
+        data,
+        ...status ? { status } : {},
+        populate: "*"
+      });
+      return { action: "update", document };
+    }
+  });
+}
+function createTools(strapi) {
+  return {
+    listContentTypes: createListContentTypesTool(strapi),
+    searchContent: createSearchContentTool(strapi),
+    writeContent: createWriteContentTool(strapi)
+  };
+}
+function describeTools(tools) {
+  const lines = Object.entries(tools).map(
+    ([name, t]) => `- ${name}: ${t.description ?? "No description"}`
+  );
+  return `You are a Strapi CMS assistant. You have these tools:
+${lines.join("\n")}
+
+Use them to fulfill user requests. When asked to create or update content, use the appropriate tool — do not tell the user you cannot.`;
+}
 const service = ({ strapi }) => ({
   async ask(prompt, options) {
     const result = await aiSDKManager.generateText(prompt, {
@@ -258,10 +458,18 @@ const service = ({ strapi }) => ({
    * Chat with messages - returns raw stream for UI message stream response
    * Compatible with AI SDK UI hooks (useChat)
    */
-  chat(messages, options) {
+  async chat(messages, options) {
+    const modelMessages = await convertToModelMessages(messages);
+    const tools = createTools(strapi);
+    const toolsPrompt = describeTools(tools);
+    const system = options?.system ? `${options.system}
+
+${toolsPrompt}` : toolsPrompt;
     return aiSDKManager.streamRaw({
-      messages,
-      system: options?.system
+      messages: modelMessages,
+      system,
+      tools,
+      stopWhen: stepCountIs(5)
     });
   },
   isInitialized() {

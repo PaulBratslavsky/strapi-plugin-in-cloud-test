@@ -51,7 +51,10 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
     const service = getService(strapi, ctx);
     if (!service) return;
 
-    const result = service.chat(body.messages, { system: body.system });
+    const config = strapi.config.get('plugin::ai-sdk') as { systemPrompt?: string };
+    const system = body.system || config.systemPrompt || undefined;
+
+    const result = await service.chat(body.messages, { system });
 
     // Get the response using toUIMessageStreamResponse
     const response = result.toUIMessageStreamResponse();

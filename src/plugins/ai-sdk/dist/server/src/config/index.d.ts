@@ -3,6 +3,7 @@ declare const _default: {
         anthropicApiKey: string;
         chatModel: string;
         baseURL: any;
+        systemPrompt: string;
     };
     validator(config: unknown): void;
 };

@@ -1,4 +1,7 @@
-import type { ModelMessage } from 'ai';
+import type { ModelMessage, ToolSet, StopCondition } from 'ai';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyStopCondition = StopCondition<any>;
 
 export const CHAT_MODELS = [
   'claude-sonnet-4-20250514',
@@ -17,12 +20,15 @@ export interface PluginConfig {
   anthropicApiKey: string;
   chatModel?: ChatModelName;
   baseURL?: string;
+  systemPrompt?: string;
 }
 
 export interface GenerateOptions {
   system?: string;
   temperature?: number;
   maxOutputTokens?: number;
+  tools?: ToolSet;
+  stopWhen?: AnyStopCondition;
 }
 
 export interface PromptInput extends GenerateOptions {

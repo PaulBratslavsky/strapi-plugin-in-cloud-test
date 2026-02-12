@@ -1,4 +1,13 @@
-export default () => ({
+export default {
   type: 'admin',
-  routes: [],
-});
+  routes: [
+    {
+      method: 'POST',
+      path: '/chat',
+      handler: 'controller.chat',
+      config: {
+        policies: [],
+      },
+    },
+  ],
+};

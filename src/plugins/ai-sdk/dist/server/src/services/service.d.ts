@@ -1,5 +1,5 @@
 import type { Core } from '@strapi/strapi';
-import type { ModelMessage } from 'ai';
+import type { UIMessage } from 'ai';
 import { type StreamTextRawResult } from '../lib/init-ai-sdk';
 declare const service: ({ strapi }: {
     strapi: Core.Strapi;
@@ -14,9 +14,9 @@ declare const service: ({ strapi }: {
      * Chat with messages - returns raw stream for UI message stream response
      * Compatible with AI SDK UI hooks (useChat)
      */
-    chat(messages: ModelMessage[], options?: {
+    chat(messages: UIMessage[], options?: {
         system?: string;
-    }): StreamTextRawResult;
+    }): Promise<StreamTextRawResult>;
     isInitialized(): boolean;
 };
 export default service;
