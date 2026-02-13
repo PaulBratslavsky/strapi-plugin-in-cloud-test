@@ -8,7 +8,7 @@ declare const _default: {
     }) => void;
     destroy: ({ strapi }: {
         strapi: import("@strapi/types/dist/core").Strapi;
-    }) => void;
+    }) => Promise<void>;
     config: {
         default: {
             anthropicApiKey: string;
@@ -25,6 +25,11 @@ declare const _default: {
             ask(ctx: import("koa").Context): Promise<void>;
             askStream(ctx: import("koa").Context): Promise<void>;
             chat(ctx: import("koa").Context): Promise<void>;
+        };
+        mcp: ({ strapi }: {
+            strapi: import("@strapi/types/dist/core").Strapi;
+        }) => {
+            handle(ctx: any): Promise<void>;
         };
     };
     routes: {

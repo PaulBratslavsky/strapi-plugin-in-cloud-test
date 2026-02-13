@@ -1,6 +1,8 @@
 import type { Core } from '@strapi/strapi';
 import { tool, zodSchema } from 'ai';
 import { z } from 'zod';
+import { writeContent } from '../tool-logic';
+import { sanitizeInput, sanitizeOutput } from '../mcp/utils/sanitize';
 
 export function createWriteContentTool(strapi: Core.Strapi) {
   return tool({
@@ -27,33 +29,11 @@ export function createWriteContentTool(strapi: Core.Strapi) {
           .describe('Document status. Defaults to draft.'),
       })
     ),
-    execute: async ({ contentType, action, documentId, data, status }) => {
-      if (!strapi.contentTypes[contentType as keyof typeof strapi.contentTypes]) {
-        return { error: `Content type "${contentType}" does not exist.` };
-      }
-
-      if (action === 'update' && !documentId) {
-        return { error: 'documentId is required for update actions.' };
-      }
-
-      const docs = strapi.documents(contentType as any);
-
-      if (action === 'create') {
-        const document = await docs.create({
-          data,
-          ...(status ? { status } : {}),
-          populate: '*',
-        } as any);
-        return { action: 'create', document };
-      }
-
-      const document = await docs.update({
-        documentId: documentId,
-        data,
-        ...(status ? { status } : {}),
-        populate: '*',
-      } as any);
-      return { action: 'update', document };
+    execute: async (params) => {
+      const sanitizedData = await sanitizeInput(strapi, params.contentType, params.data);
+      const result = await writeContent(strapi, { ...params, data: sanitizedData });
+      const sanitizedDoc = await sanitizeOutput(strapi, params.contentType, result.document);
+      return { ...result, document: sanitizedDoc };
     },
   });
 }

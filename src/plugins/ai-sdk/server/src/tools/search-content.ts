@@ -1,8 +1,7 @@
 import type { Core } from '@strapi/strapi';
 import { tool, zodSchema } from 'ai';
 import { z } from 'zod';
-
-const MAX_PAGE_SIZE = 50;
+import { searchContent } from '../tool-logic';
 
 export function createSearchContentTool(strapi: Core.Strapi) {
   return tool({
@@ -41,36 +40,6 @@ export function createSearchContentTool(strapi: Core.Strapi) {
           .describe('Results per page (max 50)'),
       })
     ),
-    execute: async ({ contentType, query, filters, fields, sort, page, pageSize }) => {
-      if (!strapi.contentTypes[contentType as keyof typeof strapi.contentTypes]) {
-        return { error: `Content type "${contentType}" does not exist.` };
-      }
-
-      const clampedPageSize = Math.min(pageSize ?? 10, MAX_PAGE_SIZE);
-
-      const results = await strapi.documents(contentType as any).findMany({
-        ...(query ? { _q: query } : {}),
-        ...(filters ? { filters } : {}),
-        ...(fields ? { fields } : {}),
-        ...(sort ? { sort } : {}),
-        page,
-        pageSize: clampedPageSize,
-        populate: '*',
-      } as any);
-
-      const total = await strapi.documents(contentType as any).count({
-        ...(query ? { _q: query } : {}),
-        ...(filters ? { filters } : {}),
-      } as any);
-
-      return {
-        results,
-        pagination: {
-          page: page ?? 1,
-          pageSize: clampedPageSize,
-          total,
-        },
-      };
-    },
+    execute: async (params) => searchContent(strapi, params),
   });
 }

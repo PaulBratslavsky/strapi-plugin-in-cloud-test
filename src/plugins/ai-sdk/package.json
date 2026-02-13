@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.15",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@strapi/design-system": "^2.0.0-rc.30",
     "@strapi/icons": "^2.0.0-rc.30",
     "ai": "^6.0.39",
@@ -69,5 +70,9 @@
   "name": "ai-sdk",
   "description": "Example project showcasing AI SDK from Vercel",
   "license": "MIT",
-  "author": "Paul Bratslavsky <paul.bratslavsky@strapi.io>"
+  "author": "Paul Bratslavsky <paul.bratslavsky@strapi.io>",
+  "bundleDependencies": [
+    "@modelcontextprotocol/sdk",
+    "zod"
+  ]
 }

@@ -7,16 +7,4 @@ export declare function createSearchContentTool(strapi: Core.Strapi): import("ai
     filters?: Record<string, unknown>;
     fields?: string[];
     sort?: string;
-}, {
-    error: string;
-    results?: undefined;
-    pagination?: undefined;
-} | {
-    results: import("@strapi/types/dist/modules/documents").AnyDocument[];
-    pagination: {
-        page: number;
-        pageSize: number;
-        total: number;
-    };
-    error?: undefined;
-}>;
+}, import("../tool-logic").SearchContentResult>;

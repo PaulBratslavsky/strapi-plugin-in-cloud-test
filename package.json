@@ -16,6 +16,7 @@
     "start": "strapi start",
     "strapi": "strapi",
     "test:api": "npx tsx tests/ai-sdk.test.ts",
+    "test:mcp": "npx tsx --env-file=.env tests/mcp.test.ts",
     "test:stream": "node tests/test-stream.mjs",
     "test:chat": "node tests/test-chat.mjs",
     "upgrade": "npx @strapi/upgrade latest",
